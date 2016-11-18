@@ -1,0 +1,23 @@
+127.0.0.1       localhost
+::1             localhost ipv6-localhost ipv6-loopback
+fe00::0         ipv6-localnet
+ff00::0         ipv6-mcastprefix
+ff02::1         ipv6-allnodes
+ff02::2         ipv6-allrouters
+ff02::3         ipv6-allhosts
+
+# ,- Internal VPN IP-address
+# |             ,- Server name (can be anything & will be converted into a tinc compatible format)
+# |             |         ,- "#"-comment tag as separator (required)
+# |             |         |  ,- This indicates the deployment script that this host should be a tinc node
+# |             |         |  |     ,- tinc VPN network name                           }
+# |             |         |  |     |     ,- IPv4 prefix length (32=tun / 0-31=tap)    }-  Needs to be the same for all hosts in the same tinc VPN network!
+# |             |         |  |     |     |   ,- Port used for tinc VPN communication  }
+# |             |         |  |     |     |   |    ,- Public IPv4 address for tinc VPN communication
+10.185.7.1		server-a  #  tinc  neta  32  655  1.1.1.1
+10.185.7.2      server-b  #  tinc  neta  32  655  2.2.2.2
+10.185.7.3      server-c  #  tinc  neta  32  655  3.3.3.3
+10.185.7.4      server-d  #  tinc  neta  32  655  4.4.4.4
+10.58.209.1     server-x  #  tinc  netb  24  656  24.24.24.24
+10.58.209.2     server-y  #  tinc  netb  24  656  25.25.25.25
+10.58.209.3     server-z  #  tinc  netb  24  656  26.26.26.26
