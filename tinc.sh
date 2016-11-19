@@ -103,8 +103,15 @@ EOF
 	rm -f /etc/tinc/${netname}/tinc-down /etc/tinc/${netname}/tinc-up /etc/tinc/${netname}/subnet-down /etc/tinc/${netname}/subnet-up;
 	wget -P /etc/tinc/${netname}/ -q ${scripts};
 	chmod +x /etc/tinc/${netname}/tinc-up /etc/tinc/${netname}/tinc-down /etc/tinc/${netname}/subnet-up /etc/tinc/${netname}/subnet-down > /dev/null 2> /dev/null;
-	service tinc stop;
-	pkill -9 -f '^/usr/sbin/tincd -n .*';
-	service tinc restart
+	systemctl enable tinc@${netname}.service > /dev/null 2> /dev/null && (
+		systemctl stop tinc@${netname}.service;
+		/usr/sbin/tincd -n ${netname} --kill=9;
+		systemctl start tinc@${netname}.service;
+		true
+	) || (
+		service tinc stop;
+		pkill -9 -f '^/usr/sbin/tincd -n .*';
+		service tinc restart
+	)
 "
 done
