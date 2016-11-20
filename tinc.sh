@@ -1,5 +1,34 @@
 #!/usr/bin/env bash
 
+# Defaults, can be overwritten using /etc/tinc-deploy/global.conf or on a per-network basis using /etc/tinc-deploy/net-{network-name}.conf
+set_defaults() {
+	tc_AddressFamily="ipv4"
+	tc_DecrementTTL="no"
+	tc_DirectOnly="no"
+	tc_Forwarding="internal"
+	tc_Hostnames="no"
+	tc_IffOneQueue="no"
+	tc_KeyExpire="3600"
+	tc_LocalDiscovery="no"
+	tc_MACExpire="600"
+	tc_MaxTimeout="30"
+	tc_PingInterval="60"
+	tc_PingTimeout="5"
+	tc_PriorityInheritance="no"
+	tc_ProcessPriority="high"
+	tc_ReplayWindow="128"
+	tc_StrictSubnets="no"
+	tc_TunnelServer="no"
+	tc_Cipher="none"
+	tc_ClampMSS="yes"
+	tc_Compression="0"
+	tc_Digest="none"
+	tc_IndirectData="no"
+	tc_MACLength="0"
+	tc_PMTU="1514"
+	tc_PMTUDiscovery="yes"
+}
+
 long2ip() {
 	local ip=$1
 	echo -n $((ip >> 24 & 255))"."$((ip >> 16 & 255))"."$((ip >> 8 & 255 ))"."$((ip & 255))
@@ -42,6 +71,8 @@ cat /etc/hosts | awk '$3 == "#" && $4 == "tinc" {print $1, $2, $5, $6, $7, $8}' 
 done
 
 cat /etc/hosts | awk '$3 == "#" && $4 == "tinc" {print $1, $2, $5, $6, $7, $8}' | while read int hostname netname netsize port ext; do
+	set_defaults
+	test -f "/etc/tinc-deploy/global.conf" && source "/etc/tinc-deploy/global.conf"
 	tincname=$(echo -n "${hostname}" | tr -c '[:alnum:]' '_')
 	if [ "x${match}" != "x" -a "x${match}" != "x${netname}" -a "x${match}" != "x${hostname}" -a "x${match}" != "x${tincname}" ]; then
 		continue
@@ -50,65 +81,76 @@ cat /etc/hosts | awk '$3 == "#" && $4 == "tinc" {print $1, $2, $5, $6, $7, $8}' 
 		int=$(long2ip $(echo -n "${netname}"$'\t'"${hostname}"$'\t'"${ext}" | sha512sum | tr -d -c '[:digit:]' | sed -r 's/(.)/\1 /g' | tr " " "\n" | awk '{sum=(sum+1+NR)*($1+1+NR);}END{print((sum%16777215)+167772160);}'))
 	fi
 	echo -n "Deploying ${hostname} (${ext}) / ${tincname} (${int}) ..."
+	tc_Interface="${netname}"
+	tc_Name="${tincname}"
+	tc_Address="${ext}"
+	tc_Port="${port}"
 	if [ "x${netsize}" == "x32" ]; then
-		broadcast="no"
-		devicetype="tun"
-		subnet="${int}/32"
-		mode="router"
+		tc_Broadcast="no"
+		tc_DeviceType="tun"
+		tc_Subnet="${int}/32"
+		tc_Mode="router"
 		scripts="https://scr.meo.ws/files/tinc-scripts/tinc-up https://scr.meo.ws/files/tinc-scripts/tinc-down https://scr.meo.ws/files/tinc-scripts/subnet-up https://scr.meo.ws/files/tinc-scripts/subnet-down"
 	else
-		broadcast="mst"
-		devicetype="tap"
-		subnet=$(sipcalc "${int}/${netsize}" | grep -E '^Network address' | awk '{print $4}')
-		mode="switch"
+		Broadcast="mst"
+		tc_DeviceType="tap"
+		tc_Subnet=$(sipcalc "${int}/${netsize}" | grep -E '^Network address' | awk '{print $4}')
+		tc_Mode="switch"
 		scripts="https://scr.meo.ws/files/tinc-scripts/tinc-up https://scr.meo.ws/files/tinc-scripts/tinc-down"
 	fi
 	echo -n "hosts..."
 	tar c /etc/tinc/${netname}/hosts/ 2> /dev/null | ssh "root@${ext}" "tar x -mC / -f /dev/stdin"
+	test -f "/etc/tinc-deploy/net-${netname}.conf" && source "/etc/tinc-deploy/net-${netname}.conf"
 	(
 cat << EOF
+##################################################
+# Auto-generated tinc network configuration file #
+# date=$(TZ=Etc/UTC date -Is)                  #
+# time=$(date +%s)                                #
+##################################################
 # myip = ${int}/${netsize}
-AddressFamily = ipv4
-Broadcast = ${broadcast}
-DecrementTTL = no
-DeviceType = ${devicetype}
-DirectOnly = no
-Forwarding = internal
-Hostnames = no
-IffOneQueue = no
-Interface = ${netname}
-KeyExpire = 3600
-LocalDiscovery = no
-MACExpire = 600
-MaxTimeout = 30
-Mode = ${mode}
-Name = ${tincname}
-PingInterval = 60
-PingTimeout = 5
-PriorityInheritance = no
-ProcessPriority = high
-ReplayWindow = 128
-StrictSubnets = no
-TunnelServer = no
-Address = ${ext}
-Cipher = none
-ClampMSS = yes
-Compression = 0
-Digest = none
-IndirectData = no
-MACLength = 0
-PMTU = 1514
-PMTUDiscovery = yes
-Port = ${port}
-Subnet = ${subnet}
+AddressFamily = ${tc_AddressFamily}
+Broadcast = ${tc_Broadcast}
+DecrementTTL = ${tc_DecrementTTL}
+DeviceType = ${tc_DeviceType}
+DirectOnly = ${tc_DirectOnly}
+Forwarding = ${tc_Forwarding}
+Hostnames = ${tc_Hostnames}
+IffOneQueue = ${tc_IffOneQueue}
+Interface = ${tc_Interface}
+KeyExpire = ${tc_KeyExpire}
+LocalDiscovery = ${tc_LocalDiscovery}
+MACExpire = ${tc_MACExpire}
+MaxTimeout = ${tc_MaxTimeout}
+Mode = ${tc_Mode}
+Name = ${tc_Name}
+PingInterval = ${tc_PingInterval}
+PingTimeout = ${tc_PingTimeout}
+PriorityInheritance = ${tc_PriorityInheritance}
+ProcessPriority = ${tc_ProcessPriority}
+ReplayWindow = ${tc_ReplayWindow}
+StrictSubnets = ${tc_StrictSubnets}
+TunnelServer = ${tc_TunnelServer}
+Address = ${tc_Address}
+Cipher = ${tc_Cipher}
+ClampMSS = ${tc_ClampMSS}
+Compression = ${tc_Compression}
+Digest = ${tc_Digest}
+IndirectData = ${tc_IndirectData}
+MACLength = ${tc_MACLength}
+PMTU = ${tc_PMTU}
+PMTUDiscovery = ${tc_PMTUDiscovery}
+Port = ${tc_Port}
+Subnet = ${tc_Subnet}
 EOF
 	for connectto in /etc/tinc/${netname}/hosts/*; do
 		echo "ConnectTo = "$(basename "${connectto}")
 	done
 	) | ssh -F/dev/null -oPasswordAuthentication=no -oUseRoaming=no -oStrictHostKeyChecking=no -oConnectTimeout=30 "root@${ext}" "
 
-	echo -n 'basics...'
+	echo -n 'netsboot...'
 	ls -d1 /etc/tinc/*/ | cut -d/ -f4 > /etc/tinc/nets.boot;
+	echo -n 'config...'
 	cat > /etc/tinc/${netname}/tinc.conf;
 
 	echo -n 'scripts...'
