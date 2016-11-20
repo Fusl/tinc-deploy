@@ -26,6 +26,7 @@ cat /etc/hosts | awk '$3 == "#" && $4 == "tinc" {print $1, $2, $5, $6, $7, $8}' 
 		echo ""
 		ssh -n -F/dev/null -oPasswordAuthentication=no -oUseRoaming=no -oStrictHostKeyChecking=no -oConnectTimeout=30 "root@${ext}" "
 			tincd --version > /dev/null 2> /dev/null || (apt-get update > /dev/null 2> /dev/null; apt-get -y install tinc > /dev/null 2> /dev/null;);
+			tincd --version > /dev/null 2> /dev/null || exit 1;
 			mkdir -p /etc/tinc/${netname}/hosts/ > /dev/null 2> /dev/null;
 			test -f /etc/tinc/${netname}/rsa_key.pub > /dev/null 2> /dev/null || (echo; echo;) | tincd -n ${netname} -K4096 > /dev/null 2> /dev/null;
 			test -f /etc/tinc/${netname}/.nodel > /dev/null 2> /dev/null || find /etc/tinc/${netname}/hosts/ -type f -delete > /dev/null 2> /dev/null;
