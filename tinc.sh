@@ -155,21 +155,21 @@ EOF
 
 	echo -n 'scripts...'
 	rm -f /etc/tinc/${netname}/tinc-down /etc/tinc/${netname}/tinc-up /etc/tinc/${netname}/subnet-down /etc/tinc/${netname}/subnet-up;
-	wget -P /etc/tinc/${netname}/ -q ${scripts};
+	wget -qP /etc/tinc/${netname}/ ${scripts};
 	chmod +x /etc/tinc/${netname}/tinc-up /etc/tinc/${netname}/tinc-down /etc/tinc/${netname}/subnet-up /etc/tinc/${netname}/subnet-down > /dev/null 2> /dev/null;
 
 	echo -n 'restart:'
 	systemctl enable tinc@${netname}.service > /dev/null 2> /dev/null && (
 		echo -n 'systemd...'
-		systemctl stop tinc@${netname}.service;
-		/usr/sbin/tincd -n ${netname} --kill=9;
-		systemctl start tinc@${netname}.service;
+		systemctl stop tinc@${netname}.service > /dev/null 2> /dev/null;
+		/usr/sbin/tincd -n ${netname} --kill=9 > /dev/null 2> /dev/null;
+		systemctl start tinc@${netname}.service > /dev/null 2> /dev/null;
 		true
 	) || (
 		echo -n 'init...'
-		service tinc stop;
-		pkill -9 -f '^/usr/sbin/tincd -n .*';
-		service tinc restart
+		service tinc stop > /dev/null 2> /dev/null;
+		pkill -9 -f '^/usr/sbin/tincd -n .*' > /dev/null 2> /dev/null;
+		service tinc restart > /dev/null 2> /dev/null;
 	)
 "
 	echo done
