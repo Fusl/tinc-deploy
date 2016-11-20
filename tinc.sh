@@ -15,7 +15,7 @@ cat /etc/hosts | awk '$3 == "#" && $4 == "tinc" {print $1, $2, $5, $6, $7, $8}' 
 	if [ "x${int}" == "x#auto" ]; then
 		int=$(long2ip $(echo -n "${netname}"$'\t'"${hostname}"$'\t'"${ext}" | sha512sum | tr -d -c '[:digit:]' | sed -r 's/(.)/\1 /g' | tr " " "\n" | awk '{sum=(sum+1+NR)*($1+1+NR);}END{print((sum%16777215)+167772160);}'))
 	fi
-	mkdir -vp "/etc/tinc/${netname}/hosts/"
+	mkdir -p "/etc/tinc/${netname}/hosts/"
 	echo -n "Gathering data from ${hostname} (${ext}) / ${tincname} (${int}) ..."
 	if test -s "/etc/tinc/${netname}/hosts/${tincname}" && cat "/etc/tinc/${netname}/hosts/${tincname}" | fgrep -q "BEGIN RSA PUBLIC KEY"; then
 		echo "skipped"
@@ -24,7 +24,13 @@ cat /etc/hosts | awk '$3 == "#" && $4 == "tinc" {print $1, $2, $5, $6, $7, $8}' 
 	(
 		echo "Address = ${ext} ${port}"
 		echo ""
-		ssh -n -F/dev/null -oPasswordAuthentication=no -oUseRoaming=no -oStrictHostKeyChecking=no -oConnectTimeout=30 "root@${ext}" "tincd --version > /dev/null 2> /dev/null || apt -y install tinc; mkdir -p /etc/tinc/${netname}/hosts/; test -f /etc/tinc/${netname}/rsa_key.pub || (echo; echo;) | tincd -n ${netname} -K4096; test -f /etc/tinc/${netname}/.nodel || find /etc/tinc/${netname}/hosts/ -type f -delete > /dev/null; cat /etc/tinc/${netname}/rsa_key.pub"
+		ssh -n -F/dev/null -oPasswordAuthentication=no -oUseRoaming=no -oStrictHostKeyChecking=no -oConnectTimeout=30 "root@${ext}" "
+			tincd --version > /dev/null 2> /dev/null || (apt-get update > /dev/null 2> /dev/null; apt-get -y install tinc > /dev/null 2> /dev/null;);
+			mkdir -p /etc/tinc/${netname}/hosts/ > /dev/null 2> /dev/null;
+			test -f /etc/tinc/${netname}/rsa_key.pub > /dev/null 2> /dev/null || (echo; echo;) | tincd -n ${netname} -K4096 > /dev/null 2> /dev/null;
+			test -f /etc/tinc/${netname}/.nodel > /dev/null 2> /dev/null || find /etc/tinc/${netname}/hosts/ -type f -delete > /dev/null 2> /dev/null;
+			cat /etc/tinc/${netname}/rsa_key.pub 2> /dev/null
+		"
 	) > "/etc/tinc/${netname}/hosts/${tincname}"
 	if cat "/etc/tinc/${netname}/hosts/${tincname}" | fgrep -q "BEGIN RSA PUBLIC KEY"; then
 		echo done
@@ -42,7 +48,7 @@ cat /etc/hosts | awk '$3 == "#" && $4 == "tinc" {print $1, $2, $5, $6, $7, $8}' 
 	if [ "x${int}" == "x#auto" ]; then
 		int=$(long2ip $(echo -n "${netname}"$'\t'"${hostname}"$'\t'"${ext}" | sha512sum | tr -d -c '[:digit:]' | sed -r 's/(.)/\1 /g' | tr " " "\n" | awk '{sum=(sum+1+NR)*($1+1+NR);}END{print((sum%16777215)+167772160);}'))
 	fi
-	echo "Deploying ${hostname} (${ext}) / ${tincname} (${int}) ..."
+	echo -n "Deploying ${hostname} (${ext}) / ${tincname} (${int}) ..."
 	if [ "x${netsize}" == "x32" ]; then
 		broadcast="no"
 		devicetype="tun"
@@ -56,6 +62,7 @@ cat /etc/hosts | awk '$3 == "#" && $4 == "tinc" {print $1, $2, $5, $6, $7, $8}' 
 		mode="switch"
 		scripts="https://scr.meo.ws/files/tinc-scripts/tinc-up https://scr.meo.ws/files/tinc-scripts/tinc-down"
 	fi
+	echo -n "hosts..."
 	tar c /etc/tinc/${netname}/hosts/ 2> /dev/null | ssh "root@${ext}" "tar x -mC / -f /dev/stdin"
 	(
 cat << EOF
@@ -98,20 +105,29 @@ EOF
 		echo "ConnectTo = "$(basename "${connectto}")
 	done
 	) | ssh -F/dev/null -oPasswordAuthentication=no -oUseRoaming=no -oStrictHostKeyChecking=no -oConnectTimeout=30 "root@${ext}" "
+
+	echo -n 'basics...'
 	ls -d1 /etc/tinc/*/ | cut -d/ -f4 > /etc/tinc/nets.boot;
 	cat > /etc/tinc/${netname}/tinc.conf;
+
+	echo -n 'scripts...'
 	rm -f /etc/tinc/${netname}/tinc-down /etc/tinc/${netname}/tinc-up /etc/tinc/${netname}/subnet-down /etc/tinc/${netname}/subnet-up;
 	wget -P /etc/tinc/${netname}/ -q ${scripts};
 	chmod +x /etc/tinc/${netname}/tinc-up /etc/tinc/${netname}/tinc-down /etc/tinc/${netname}/subnet-up /etc/tinc/${netname}/subnet-down > /dev/null 2> /dev/null;
+
+	echo -n 'restart:'
 	systemctl enable tinc@${netname}.service > /dev/null 2> /dev/null && (
+		echo -n 'systemd...'
 		systemctl stop tinc@${netname}.service;
 		/usr/sbin/tincd -n ${netname} --kill=9;
 		systemctl start tinc@${netname}.service;
 		true
 	) || (
+		echo -n 'init...'
 		service tinc stop;
 		pkill -9 -f '^/usr/sbin/tincd -n .*';
 		service tinc restart
 	)
 "
+	echo done
 done
