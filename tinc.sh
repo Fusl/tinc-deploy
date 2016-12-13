@@ -92,7 +92,7 @@ cat /etc/hosts | awk '$3 == "#" && $4 == "tinc" {print $1, $2, $5, $6, $7, $8}' 
 		tc_Mode="router"
 		scripts="https://scr.meo.ws/files/tinc-scripts/tinc-up https://scr.meo.ws/files/tinc-scripts/tinc-down https://scr.meo.ws/files/tinc-scripts/subnet-up https://scr.meo.ws/files/tinc-scripts/subnet-down"
 	else
-		Broadcast="mst"
+		tc_Broadcast="mst"
 		tc_DeviceType="tap"
 		tc_Subnet=$(sipcalc "${int}/${netsize}" | grep -E '^Network address' | awk '{print $4}')
 		tc_Mode="switch"
