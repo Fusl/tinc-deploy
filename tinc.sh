@@ -36,7 +36,7 @@ long2ip() {
 
 match="${1}"
 
-cat /etc/hosts | awk '$3 == "#" && $4 == "tinc" {print $1, $2, $5, $6, $7, $8}' | while read int hostname netname netsize port ext; do
+cat /etc/hosts | awk '$3 == "#" && $4 == "tinc" {print $1, $2, $5, $6, $7, $8, $9}' | while read int hostname netname netsize port ext tags; do
 	tincname=$(echo -n "${hostname}" | tr -c '[:alnum:]' '_')
 	if [ "x${match}" != "x" -a "x${match}" != "x${netname}" -a "x${match}" != "x${hostname}" -a "x${match}" != "x${tincname}" ]; then
 		continue
@@ -52,6 +52,7 @@ cat /etc/hosts | awk '$3 == "#" && $4 == "tinc" {print $1, $2, $5, $6, $7, $8}' 
 	fi
 	(
 		echo "Address = ${ext} ${port}"
+		echo "${tags}" | tr "," "\n" | sed 's|^|# tag[|;s|$|]|'
 		echo ""
 		ssh -n -F/dev/null -oPasswordAuthentication=no -oUseRoaming=no -oStrictHostKeyChecking=no -oConnectTimeout=30 "root@${ext}" "
 			tincd --version > /dev/null 2> /dev/null || (apt-get update > /dev/null 2> /dev/null; apt-get -y install tinc > /dev/null 2> /dev/null;);
@@ -70,7 +71,7 @@ cat /etc/hosts | awk '$3 == "#" && $4 == "tinc" {print $1, $2, $5, $6, $7, $8}' 
 	fi
 done
 
-cat /etc/hosts | awk '$3 == "#" && $4 == "tinc" {print $1, $2, $5, $6, $7, $8}' | while read int hostname netname netsize port ext; do
+cat /etc/hosts | awk '$3 == "#" && $4 == "tinc" {print $1, $2, $5, $6, $7, $8, $9}' | while read int hostname netname netsize port ext tags; do
 	set_defaults
 	test -f "/etc/tinc-deploy/global.conf" && source "/etc/tinc-deploy/global.conf"
 	tincname=$(echo -n "${hostname}" | tr -c '[:alnum:]' '_')
@@ -144,7 +145,7 @@ Port = ${tc_Port}
 Subnet = ${tc_Subnet}
 EOF
 	for connectto in /etc/tinc/${netname}/hosts/*; do
-		echo "ConnectTo = "$(basename "${connectto}")
+		fgrep -q "# tag[noconnect]" "${connectto}" || echo "ConnectTo = "$(basename "${connectto}")
 	done
 	) | ssh -F/dev/null -oPasswordAuthentication=no -oUseRoaming=no -oStrictHostKeyChecking=no -oConnectTimeout=30 "root@${ext}" "
 
